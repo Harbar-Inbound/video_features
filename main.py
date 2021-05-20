@@ -1,7 +1,9 @@
-import torch
 import argparse
+from datetime import datetime
 
-from utils.utils import form_list_from_user_input, fix_tensorflow_gpu_allocation
+import torch
+
+from utils.utils import form_list_from_user_input
 
 
 def parallel_feature_extraction(args):
@@ -12,9 +14,12 @@ def parallel_feature_extraction(args):
         from models.i3d.extract_i3d import ExtractI3D  # defined here to avoid import errors
         extractor = ExtractI3D(args)
     elif args.feature_type == 'vggish':
-        from models.vggish.extract_vggish import ExtractVGGish  # defined here to avoid import errors
-        fix_tensorflow_gpu_allocation(args)
-        extractor = ExtractVGGish(args)
+        if not args.tensorflow:
+            from models.vggish_torch.extract_vggish import ExtractVGGish
+            extractor = ExtractVGGish(args).cuda()
+        else:
+            from models.vggish.extract_vggish import ExtractVGGish
+            extractor = ExtractVGGish(args)
 
     # the indices correspond to the positions of the target videos in
     # the video_paths list. They are required here because
@@ -26,10 +31,11 @@ def parallel_feature_extraction(args):
     indices = torch.arange(len(video_paths))
     replicas = torch.nn.parallel.replicate(extractor, args.device_ids[:len(indices)])
     inputs = torch.nn.parallel.scatter(indices, args.device_ids[:len(indices)])
+
     torch.nn.parallel.parallel_apply(replicas[:len(inputs)], inputs)
+
     # closing the tqdm progress bar to avoid some unexpected errors due to multi-threading
     extractor.progress.close()
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract Features')
@@ -59,10 +65,17 @@ if __name__ == "__main__":
     )
     parser.add_argument('--kinetics_class_labels', default='./checkpoints/label_map.txt')
     # VGGish options
-    parser.add_argument('--vggish_model_path', default='./models/vggish/checkpoints/vggish_model.ckpt')
-    parser.add_argument('--vggish_pca_path', default='./models/vggish/checkpoints/vggish_pca_params.npz')
+    parser.add_argument('--vggish_model_path', default='./models/{}/checkpoints/vggish_model.')
+    parser.add_argument('--vggish_pca_path', default='./models/{}/checkpoints/vggish_pca_params.')
 
+    # Tensorflow or Pytorch implementation
+    parser.add_argument('--tensorflow', default=False,  action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
+
+    args.vggish_model_path = str(args.vggish_model_path).format(
+        "vggish_torch" if not args.tensorflow else "vggish") + ("pt" if not args.tensorflow else "ckpt")
+    args.vggish_pca_path = str(args.vggish_pca_path).format("vggish_torch" if not args.tensorflow else "vggish") + (
+        "pt" if not args.tensorflow else "npz")
 
     # some printing
     if args.on_extraction == 'save_numpy':
