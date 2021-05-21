@@ -1,5 +1,4 @@
 import argparse
-from datetime import datetime
 
 import torch
 
@@ -14,7 +13,7 @@ def parallel_feature_extraction(args):
         from models.i3d.extract_i3d import ExtractI3D  # defined here to avoid import errors
         extractor = ExtractI3D(args)
     elif args.feature_type == 'vggish':
-        if not args.tensorflow:
+        if args.pytorch:
             from models.vggish_torch.extract_vggish import ExtractVGGish
             extractor = ExtractVGGish(args).cuda()
 
@@ -37,6 +36,7 @@ def parallel_feature_extraction(args):
 
     # closing the tqdm progress bar to avoid some unexpected errors due to multi-threading
     extractor.progress.close()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract Features')
@@ -70,13 +70,17 @@ if __name__ == "__main__":
     parser.add_argument('--vggish_pca_path', default='./models/{}/checkpoints/vggish_pca_params.')
 
     # Tensorflow or Pytorch implementation
-    parser.add_argument('--tensorflow', default=False,  action=argparse.BooleanOptionalAction)
+    parser.add_argument('--pytorch', default=False, action=argparse.BooleanOptionalAction,
+                        help="Enable running with Pytorch, if not set, the default Tensorflow implementation is used.")
     args = parser.parse_args()
 
-    args.vggish_model_path = str(args.vggish_model_path).format(
-        "vggish_torch" if not args.tensorflow else "vggish") + ("pt" if not args.tensorflow else "ckpt")
-    args.vggish_pca_path = str(args.vggish_pca_path).format("vggish_torch" if not args.tensorflow else "vggish") + (
-        "pt" if not args.tensorflow else "npz")
+    # Interpolate path to have correct file extensions and submodule directory
+    if '{}' in args.vggish_model_path:
+        args.vggish_model_path = str(args.vggish_model_path).format(
+            "vggish_torch" if args.pytorch else "vggish") + ("pt" if args.pytorch else "ckpt")
+    if '{}' in args.vggish_pca_path:
+        args.vggish_pca_path = str(args.vggish_pca_path).format("vggish_torch" if args.pytorch else "vggish") + (
+            "pt" if args.pytorch else "npz")
 
     # some printing
     if args.on_extraction == 'save_numpy':

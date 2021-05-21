@@ -54,9 +54,29 @@ All is MIT except for PWC Net implementation in I3D. Please read the PWC impleme
 
 ## VGGish
 
-The extraction of VGGish features is implemeted as a wrapper of the TensorFlow implementation.
+The extraction of VGGish features can be extracted either by using a Wrapped version (original) or Pytorch re-implementation
+that uses a ported version.
 
-### Set up the Environment for VGGish
+### Setup the Environment for VGGish (Pytorch)
+Setup `conda` environment. Requirements are in the file `conda_env_vggish_pytorch.yml`.
+
+```bash
+# it will create new conda environment called 'vggish' on your machine 
+conda env create -f conda_env_vggish_pytorch.yml
+conda activate vggish
+```
+To download the models, follow the instructions in the submodules [README](https://github.com/Harbar-Inbound/VGGish-pytorch#pre-generated-files),
+or generate your own [version](https://github.com/Harbar-Inbound/VGGish-pytorch#generate-from-checkpoint). 
+
+### Example
+The only difference during execution w.r.t. the original implementation, is that the `--pytorch` flag must be set, 
+otherwise the Tensorflow implementation is used.
+```bash
+python main.py --pytorch --feature_type vggish --device_ids 0 2 --video_paths ./sample/v_ZNVhz7ctTq0.mp4 ./sample/v_GGSY1Qvo990.mp4 
+```
+See `python main.py --help` for more arguments and I3D examples
+
+### Set up the Environment for VGGish (Tensorflow)
 Setup `conda` environment. Requirements are in file `conda_env_vggish.yml`
 ```bash
 # it will create new conda environment called 'vggish' on your machine 
