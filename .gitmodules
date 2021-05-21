@@ -1,0 +1,3 @@
+[submodule "models/vggish_torch"]
+	path = models/vggish_torch
+	url = git@github.com:Harbar-Inbound/VGGish-pytorch.git
