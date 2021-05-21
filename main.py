@@ -17,6 +17,7 @@ def parallel_feature_extraction(args):
         if not args.tensorflow:
             from models.vggish_torch.extract_vggish import ExtractVGGish
             extractor = ExtractVGGish(args).cuda()
+
         else:
             from models.vggish.extract_vggish import ExtractVGGish
             extractor = ExtractVGGish(args)

@@ -1,23 +1,28 @@
 import os
-import shutil
-from typing import Dict, Union
+from datetime import datetime
+from typing import Union
 
 import numpy as np
+import tensorflow.compat.v1 as tf
 import torch
 from tqdm import tqdm
+
 # import traceback
 
 from utils.utils import form_list_from_user_input
 from models.vggish.utils.utils import extract_wav_from_mp4
-from models.vggish.vggish_src import (vggish_input, vggish_params,
-                                      vggish_postprocess, vggish_slim)
+from models.vggish.vggish_src import vggish_slim, vggish_postprocess, vggish_input, \
+    vggish_params
+from utils.utils import form_list_from_user_input
 
-import tensorflow as tf
+log_dir = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 # turn off a ton of warnings produced by TF
 import logging
-if type(tf.contrib) != type(tf):
-    tf.contrib._warning = None
+
+# if type(tf.contrib) != type(tf):
+#     tf.compat.v1.compat.contrib._warning = None
 logging.disable(logging.WARNING)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
@@ -44,6 +49,7 @@ class ExtractVGGish(torch.nn.Module):
             indices {torch.LongTensor} -- indices to self.path_list
         '''
         device_id = indices.device.index
+
 
         # Define the model in inference mode, load the model, and
         # locate input and output tensors.
@@ -89,7 +95,7 @@ class ExtractVGGish(torch.nn.Module):
 
         # extract audio files from .mp4
         audio_wav_path, audio_aac_path = extract_wav_from_mp4(video_path, self.tmp_path)
-
+        # TODO: replace this code.
         # extract features (credits: tensorflow models)
         examples_batch = vggish_input.wavfile_to_examples(audio_wav_path)
         features_tensor = tf_session.graph.get_tensor_by_name(vggish_params.INPUT_TENSOR_NAME)
@@ -116,6 +122,6 @@ class ExtractVGGish(torch.nn.Module):
             np.save(feature_path, vggish_stack)
         else:
             raise NotImplementedError
-        
+
         return vggish_stack
 
