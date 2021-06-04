@@ -70,7 +70,7 @@ if __name__ == "__main__":
     parser.add_argument('--vggish_pca_path', default='./models/{}/checkpoints/vggish_pca_params.')
 
     # Tensorflow or Pytorch implementation
-    parser.add_argument('--pytorch', default=False, action=argparse.BooleanOptionalAction,
+    parser.add_argument('--pytorch', default=False,
                         help="Enable running with Pytorch, if not set, the default Tensorflow implementation is used.")
     args = parser.parse_args()
 
