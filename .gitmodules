@@ -1,6 +1,3 @@
 [submodule "models/vggish_torch"]
 	path = models/vggish_torch
-	url = git@github.com:Harbar-Inbound/VGGish-pytorch.git
-[submodule "Pytorch-Correlation-extension"]
-	path = Pytorch-Correlation-extension
-	url = git@github.com:ClementPinard/Pytorch-Correlation-extension.git
+	url = https://github.com/Harbar-Inbound/VGGish-pytorch.git
