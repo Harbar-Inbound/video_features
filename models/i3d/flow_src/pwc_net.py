@@ -5,7 +5,6 @@
     I need to rewrite it a bit as I cannot import `run.py` without CLI arguments
     but I want to use it for debugging
 '''
-from einops import rearrange
 import numpy
 import math
 import torch
