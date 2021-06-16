@@ -5,11 +5,12 @@
     I need to rewrite it a bit as I cannot import `run.py` without CLI arguments
     but I want to use it for debugging
 '''
-import models.i3d.flow_src.correlation as correlation
-
+from einops import rearrange
 import numpy
 import math
 import torch
+from spatial_correlation_sampler import SpatialCorrelationSampler
+
 
 # (v-iashin) adding these two for reproducibility
 torch.backends.cudnn.deterministic = True
@@ -21,7 +22,7 @@ numpy.random.seed(0)
 # assert(int(str('').join(torch.__version__.split('.')[0:3])) >= 41) # requires at least pytorch version 0.4.1
 
 def Backward(tensorInput, tensorFlow, device):
-    
+
     Backward_tensorGrid = {}
     Backward_tensorPartial = {}
     
@@ -149,6 +150,24 @@ class Decoder(torch.nn.Module):
             torch.nn.Conv2d(in_channels=intCurrent + 128 + 128 + 96 + 64 + 32, out_channels=2, kernel_size=3, stride=1, padding=1)
         )
 
+        self.correlation_sampler =  SpatialCorrelationSampler(
+            kernel_size=1,
+            patch_size=9,
+            stride=1,
+            padding=0,
+            dilation=1,
+            dilation_patch=2)
+
+
+    def pixel_cost_volume(self, im1, im2, device=None):
+        """
+        """
+        output = self.correlation_sampler(im1, im2) / im1.size(1)
+        b, ph, pw, h, w = output.size()
+        output_collated = output.view(b, ph * pw, h, w)
+
+        return output_collated
+
     def forward(self, tensorFirst, tensorSecond, objectPrevious, device):
 
         tensorFlow = None
@@ -158,7 +177,8 @@ class Decoder(torch.nn.Module):
             tensorFlow = None
             tensorFeat = None
 
-            tensorVolume = torch.nn.functional.leaky_relu(input=correlation.FunctionCorrelation(tensorFirst, tensorSecond, device),
+            tensorVolume = torch.nn.functional.leaky_relu(input=self.pixel_cost_volume(tensorFirst, tensorSecond,
+                                                                                       device=device),
                                                           negative_slope=0.1, inplace=False)
 
             tensorFeat = torch.cat([ tensorVolume ], 1)
@@ -166,7 +186,7 @@ class Decoder(torch.nn.Module):
         elif objectPrevious is not None:
             tensorFlow = self.moduleUpflow(objectPrevious['tensorFlow'])
             tensorFeat = self.moduleUpfeat(objectPrevious['tensorFeat'])
-            tensorVolume = torch.nn.functional.leaky_relu(input=correlation.FunctionCorrelation(tensorFirst=tensorFirst, tensorSecond=Backward(tensorInput=tensorSecond, 
+            tensorVolume = torch.nn.functional.leaky_relu(input=self.pixel_cost_volume(tensorFirst, Backward(tensorInput=tensorSecond,
 tensorFlow=tensorFlow * self.dblBackward, device=device), device=device), negative_slope=0.1, inplace=False)
 
             tensorFeat = torch.cat([ tensorVolume, tensorFirst, tensorFlow, tensorFeat ], 1)
