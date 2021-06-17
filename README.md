@@ -2,6 +2,59 @@
 
 This is a PyTorch module that does a feature extraction in parallel on any number of GPUs. So far, I3D and VGGish features are supported.
 
+## Running with CPU only
+
+This repository contains some changes to accommodate running the dependencies for the BMT repository without the need for
+a GPU with 8GB VRAM available (needed for I3D feature extraction). As such, we introduce the `--nocuda` flag, to run everything on the CPU.
+
+### Disclaimer  
+Let's first consider the pros and cons of running with the `--nocuda` flag.
+
+**Pros:**
+
+ * Allows to run the feature extraction without the need for a powerful GPU.
+
+**Cons:**
+ 
+ * The implementation introduces a [third party dependency](https://github.com/ClementPinard/Pytorch-Correlation-extension).
+ * The used `CrossCorrelationSampler` implementation provides slightly different outputs w.r.t the original
+ implementation.
+ * The CPU based extraction is not particularly fast. On a Nvidia K80 (Google Collab gpu) a 20 second video is processed
+in 20 seconds with I3D, while the CPU counterpart takes roughly 167 seconds on an 18 second video
+   
+### Getting started
+
+Creating a virtual environment following the commands below should allow your to start extracting features with only the
+CPU.
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r -U cpu_requirements.txt
+```
+
+It may be that you need to install the [third party dependency by Clement Pinard](https://github.com/ClementPinard/Pytorch-Correlation-extension)
+manually. To do so, run the following commands, or check the [repository](https://github.com/ClementPinard/Pytorch-Correlation-extension)
+to see how to install the package.
+
+```bash
+git clone https://github.com/ClementPinard/Pytorch-Correlation-extension.git
+cd Pytorch-Correlation-extension
+python -m setup.py install
+```
+
+After that has completed you can run the feature extraction as described below, but with CPU only! Happy hacking!
+
+**I3D** (optical flow)
+```bash
+python main.py --feature_type i3d --file_with_video_paths ./sample/sample_video_paths.txt --nocuda
+```
+
+**VGGish** (audio)
+Make sure to setup the PyTorch network as described in the following [Setup the Environment for VGGish \(Pytorch\)](#setup-the-environment-for-vggish-\(pytorch\))
+```bash
+python main.py --feature_type vggish --file_with_video_paths ./sample/sample_video_paths.txt --nocuda
+```
 
 ## I3D
 

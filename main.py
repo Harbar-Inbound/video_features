@@ -15,8 +15,8 @@ def parallel_feature_extraction(args):
     elif args.feature_type == 'vggish':
         if args.pytorch:
             from models.vggish_torch.extract_vggish import ExtractVGGish
-            extractor = ExtractVGGish(args).cuda()
-
+            print("Using pytorch implementation!")
+            extractor = ExtractVGGish(args)
         else:
             from models.vggish.extract_vggish import ExtractVGGish
             extractor = ExtractVGGish(args)
@@ -28,11 +28,16 @@ def parallel_feature_extraction(args):
     # input have the method '.device' which allows us to access the
     # current device in the extractor.
     video_paths = form_list_from_user_input(args)
-    indices = torch.arange(len(video_paths))
-    replicas = torch.nn.parallel.replicate(extractor, args.device_ids[:len(indices)])
-    inputs = torch.nn.parallel.scatter(indices, args.device_ids[:len(indices)])
-
-    torch.nn.parallel.parallel_apply(replicas[:len(inputs)], inputs)
+    if args.nocuda:
+        print("Running without cuda support!")
+        indices = torch.arange(len(video_paths), device='cpu')
+        extractor.forward(indices)
+    else:
+        extractor.cuda()
+        indices = torch.arange(len(video_paths))
+        replicas = torch.nn.parallel.replicate(extractor, args.device_ids[:len(indices)])
+        inputs = torch.nn.parallel.scatter(indices, args.device_ids[:len(indices)])
+        torch.nn.parallel.parallel_apply(replicas[:len(inputs)], inputs)
 
     # closing the tqdm progress bar to avoid some unexpected errors due to multi-threading
     extractor.progress.close()
@@ -67,8 +72,10 @@ if __name__ == "__main__":
     parser.add_argument('--kinetics_class_labels', default='./checkpoints/label_map.txt')
     # VGGish options
     parser.add_argument('--vggish_model_path', default='./models/{}/checkpoints/vggish_model.')
-    parser.add_argument('--vggish_pca_path', default='./models/{}/checkpoints/vggish_pca_params.')
+    parser.add_argument('--vggish_pca_path', default='./models/{}/checkpoints/vggish_postprocess.')
 
+    parser.add_argument('--nocuda', dest='nocuda', action='store_true', help='When set, the experiments'
+                                                                              'are run without CUDA support.')
     # Tensorflow or Pytorch implementation
     parser.add_argument('--pytorch', default=False,
                         help="Enable running with Pytorch, if not set, the default Tensorflow implementation is used.")

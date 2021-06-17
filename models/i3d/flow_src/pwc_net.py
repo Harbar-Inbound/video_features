@@ -5,6 +5,7 @@
     I need to rewrite it a bit as I cannot import `run.py` without CLI arguments
     but I want to use it for debugging
 '''
+
 import numpy
 import math
 import torch
@@ -158,14 +159,19 @@ class Decoder(torch.nn.Module):
             dilation_patch=2)
 
 
-    def pixel_cost_volume(self, im1, im2, device=None):
+    def pixel_cost_volume(self, tensorFirst, tensorSecond, device: torch.device):
         """
+        Function to perform cost function. When CPU is device, then we use the default correlation implementation
+        Otherwise, we use the pure-pytorch implementation.
         """
-        output = self.correlation_sampler(im1, im2) / im1.size(1)
-        b, ph, pw, h, w = output.size()
-        output_collated = output.view(b, ph * pw, h, w)
-
-        return output_collated
+        if 'cpu' in device.type:
+            output = self.correlation_sampler(tensorFirst, tensorSecond) / tensorFirst.size(1)
+            b, ph, pw, h, w = output.size()
+            # The collate the output vector back into a 4D tensor
+            return output.view(b, ph * pw, h, w)
+        else:
+            import models.i3d.flow_src.correlation as correlation
+            return correlation.FunctionCorrelation(tensorFirst, tensorSecond, device)
 
     def forward(self, tensorFirst, tensorSecond, objectPrevious, device):
 
